@@ -188,3 +188,120 @@ footer { max-width: 1155px; margin: auto; padding: 35px 0; display: flex; justif
 .plan.featured .plan-check { color: #aebdb6; }
 @media (max-width: 700px) { .inventory-seat-map { grid-template-columns: repeat(6, minmax(0, 1fr)); }.inventory-seat { font-size: 9px; } }
 
+/* Responsive viewport, safe areas, and layouts across phones, tablets, and desktops. */
+:root {
+  --page-gutter: clamp(16px, 4vw, 42px);
+  --page-gutter-left: max(var(--page-gutter), env(safe-area-inset-left, 0px));
+  --page-gutter-right: max(var(--page-gutter), env(safe-area-inset-right, 0px));
+}
+html { min-width: 320px; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+body { width: 100%; min-width: 320px; overflow-x: hidden; }
+button, input, select, textarea { max-width: 100%; }
+.site-shell { overflow-x: clip; }
+.site-header { width: min(100%, 1240px); height: calc(88px + env(safe-area-inset-top, 0px)); padding: env(safe-area-inset-top, 0px) var(--page-gutter-right) 0 var(--page-gutter-left); }
+.hero { grid-template-columns: minmax(0, .82fr) minmax(0, 1.18fr); gap: clamp(20px, 4vw, 48px); padding-inline: var(--page-gutter-left) var(--page-gutter-right); }
+.hero-copy, .hero-visual, .feature-grid > *, .plans > *, .student-card, .manage-panel { min-width: 0; }
+.section, .success-section { width: min(100%, 1155px); margin-inline: auto; padding-inline: var(--page-gutter-left) var(--page-gutter-right); }
+.stats-strip { width: min(calc(100% - var(--page-gutter-left) - var(--page-gutter-right)), 1155px); margin-inline: auto; }
+footer { width: min(100%, 1155px); margin-inline: auto; padding-inline: var(--page-gutter-left) var(--page-gutter-right); }
+.booking-section { grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); column-gap: clamp(24px, 5vw, 72px); padding-inline: max(16px, env(safe-area-inset-left, 0px), calc((100% - 1155px) / 2)) max(16px, env(safe-area-inset-right, 0px), calc((100% - 1155px) / 2)); }
+.booking-section > *, .booking-card { min-width: 0; }
+.manage-table-wrap { max-width: 100%; overflow-x: auto; overscroll-behavior-inline: contain; -webkit-overflow-scrolling: touch; }
+.manage-table { min-width: 100%; }
+.student-card-heading, .admin-heading, .manage-heading { min-width: 0; }
+.student-card-heading { flex-wrap: wrap; gap: 12px; }
+.attendance-month-label input { width: 100%; }
+.student-record > div { min-width: 0; overflow-wrap: anywhere; }
+.student-record .manage-action, .record-actions .manage-action { min-height: 40px; }
+.toast { right: max(16px, env(safe-area-inset-right, 0px)); bottom: max(16px, env(safe-area-inset-bottom, 0px)); max-width: calc(100% - 32px); }
+
+@media (min-width: 601px) and (max-width: 900px) {
+  .feature-grid, .plans, .success-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .feature-grid article:last-child { grid-column: 1 / -1; }
+  .success-grid { display: grid; overflow: visible; }
+  .success-card { min-width: 0; }
+}
+
+@media (max-width: 800px) {
+  .site-header { height: calc(72px + env(safe-area-inset-top, 0px)); padding-top: env(safe-area-inset-top, 0px); }
+  .main-nav { top: calc(72px + env(safe-area-inset-top, 0px)); left: env(safe-area-inset-left, 0px); right: env(safe-area-inset-right, 0px); }
+  .hero { padding: clamp(36px, 9vw, 50px) var(--page-gutter-right) clamp(54px, 12vw, 70px) var(--page-gutter-left); }
+  .hero h1 { font-size: clamp(40px, 10vw, 49px); letter-spacing: -.04em; }
+  .hero-visual { width: min(100%, 540px); min-height: clamp(300px, 85vw, 370px); margin: 42px auto 0; }
+  .hero-image { height: clamp(280px, 82vw, 340px); }
+  .floating-note { left: 0; top: 20px; max-width: calc(100% - 12px); padding: 13px; }
+  .hero-caption { right: 0; width: min(220px, 76%); }
+  .section, .success-section { padding-block: clamp(56px, 12vw, 80px); }
+  .section-heading h2, .booking-intro h2, .cta-section h2 { font-size: clamp(34px, 8vw, 41px); letter-spacing: -.04em; }
+  .booking-section { display: grid; grid-template-columns: 1fr; gap: 28px; padding-block: clamp(56px, 11vw, 75px); }
+  .booking-card { margin-top: 0; padding: clamp(14px, 4vw, 18px); }
+  .booking-bottom { flex-wrap: wrap; }
+  .booking-bottom .primary-button { min-height: 44px; white-space: normal; }
+  .success-grid { display: grid; grid-template-columns: 1fr; overflow: visible; }
+  .success-card { min-width: 0; }
+  .admin-wrap { padding: calc(clamp(38px, 7vw, 60px) + env(safe-area-inset-top, 0px)) var(--page-gutter) calc(38px + env(safe-area-inset-bottom, 0px)); }
+  .student-page { padding: calc(clamp(30px, 6vw, 44px) + env(safe-area-inset-top, 0px)) max(var(--page-gutter), env(safe-area-inset-right, 0px)) calc(30px + env(safe-area-inset-bottom, 0px)) max(var(--page-gutter), env(safe-area-inset-left, 0px)); }
+  .student-card, .manage-panel { padding: clamp(16px, 4.5vw, 22px); }
+  .student-header h1, .admin-heading h1 { font-size: clamp(32px, 8vw, 39px); letter-spacing: -.04em; overflow-wrap: anywhere; }
+  .student-card h2, .manage-heading h2 { font-size: clamp(22px, 6vw, 26px); letter-spacing: -.03em; }
+  .student-nav, .admin-nav { max-width: 100%; gap: 7px; padding-bottom: 8px; scrollbar-width: thin; -webkit-overflow-scrolling: touch; }
+  .student-nav a, .admin-nav a { min-height: 44px; padding-inline: 12px; white-space: nowrap; }
+  .student-seat-map { gap: clamp(5px, 2vw, 9px); }
+  .student-seat-map .seat { min-height: 42px; aspect-ratio: auto; }
+  .manage-tabs { flex-wrap: nowrap; overflow-x: auto; overscroll-behavior-inline: contain; -webkit-overflow-scrolling: touch; }
+  .manage-tabs button { min-height: 44px; flex: 0 0 auto; white-space: nowrap; }
+  .primary-button, .nav-login, .light-button, .menu-toggle { min-height: 44px; }
+  .admin-inline-form { align-items: stretch; }
+  .slot-admin-layout { grid-template-columns: minmax(0, 1fr); }
+  .cta-section { padding-block: clamp(52px, 10vw, 70px); }
+  footer { padding-top: 28px; padding-bottom: calc(28px + env(safe-area-inset-bottom, 0px)); }
+}
+
+@media (max-width: 700px) {
+  .student-book-form.booking-form { grid-template-columns: minmax(0, 1fr); }
+  .booking-form .seat-picker { grid-column: auto; }
+  .student-summary-grid, .admin-stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .student-summary-grid .student-card, .admin-stat-grid article { padding: 14px; }
+  .admin-stat-grid strong { font-size: clamp(21px, 6vw, 28px); }
+  .student-card-heading { align-items: stretch; }
+  .student-card-heading > div { min-width: 0; }
+  .student-card-heading > .primary-button { justify-content: center; }
+  .manage-table-wrap { margin-inline: -4px; width: calc(100% + 8px); }
+  .manage-table th, .manage-table td { padding: 10px 8px; }
+  .auth-form input, .auth-form select, .auth-form textarea,
+  .registration-form input, .registration-form select, .registration-form textarea,
+  .student-book-form input, .student-book-form select,
+  .manage-table input, .manage-table select,
+  .attendance-month-label input, .admin-inline-form input,
+  .slot-admin-form input, .slot-admin-form select,
+  .slot-edit-card input, .slot-edit-card select,
+  .settings-form input, .settings-form select, .settings-form textarea,
+  .payment-form select, .profile-form input, .profile-form textarea,
+  .admin-form input, .admin-form select, .admin-form textarea,
+  .search-label input, .seat-admin-card select,
+  .slot-form input, .slot-form select, .slot-form textarea {
+    min-height: 44px;
+    font-size: 16px;
+  }
+  .auth-form textarea, .registration-form textarea, .profile-form textarea { min-height: 96px; }
+  .success-card > img, .success-photo-fallback { height: clamp(180px, 60vw, 220px); }
+  .toast { left: max(12px, env(safe-area-inset-left, 0px)); right: max(12px, env(safe-area-inset-right, 0px)); width: auto; }
+}
+
+@media (max-width: 380px) {
+  .student-summary-grid, .admin-stat-grid { grid-template-columns: minmax(0, 1fr); }
+  .student-card-heading { flex-direction: column; }
+  .student-record { flex-direction: column; align-items: stretch; }
+  .student-record > .status-pill, .student-record > .manage-action { align-self: flex-start; }
+  .hero-actions { flex-wrap: wrap; }
+  .booking-bottom { gap: 12px; }
+}
+
+@supports (min-height: 100dvh) {
+  .member-page, .auth-page { min-height: 100dvh; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+}
+
