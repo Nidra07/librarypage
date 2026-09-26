@@ -22,7 +22,7 @@ export default async function StudentRegistrationPage() {
       <div className="auth-brand"><span className="brand-mark"><BookOpen /></span><span><strong>The Peaceful Pages</strong><small>LIBRARY</small></span></div>
       <div className="eyebrow">Student registration</div>
       <h1>Complete your registration.</h1>
-      <p className="auth-intro">Enter the details from your offline admission and choose your study duration, entry time, and seat. This registration can only be completed once.</p>
+      <p className="auth-intro">Enter the details from your offline admission and choose your preferred slot, entry time, and seat. This one-time registration is followed by the ₹100 registration payment.</p>
       <RegistrationForm
         userId={user.id}
         fullName={String(user.user_metadata?.full_name ?? '')}

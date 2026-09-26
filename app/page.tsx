@@ -11,5 +11,12 @@ export default async function Page() {
     .order('display_order', { ascending: true })
     .order('selection_year', { ascending: false })
 
-  return <LibraryHome achievers={(data ?? []) as Achiever[]} />
+  const { data: publicInfo } = await supabase.rpc('get_public_library_info')
+  const libraryInfo = Array.isArray(publicInfo) ? publicInfo[0] : null
+
+  return <LibraryHome
+    achievers={(data ?? []) as Achiever[]}
+    seatCount={Number(libraryInfo?.seat_count ?? 43)}
+    monthlyFee={libraryInfo?.monthly_fee ? Number(libraryInfo.monthly_fee) : null}
+  />
 }

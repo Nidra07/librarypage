@@ -1,10 +1,11 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import AdminDashboard from '../AdminDashboard'
 
-export default async function StudentPage() {
+export default async function AdminAchieversPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/auth/login')
-  if (user.app_metadata?.role === 'admin') redirect('/admin')
-  redirect('/protected')
+  if (user.app_metadata?.role !== 'admin') redirect('/protected')
+  return <AdminDashboard />
 }

@@ -4,7 +4,8 @@ import { FormEvent, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
-type Slot = { id: string; label: string; duration_hours: number }
+type Slot = { id: string; label: string; duration_hours: number; starts_at: string; ends_at: string }
+type Seat = { seat_number: number; label: string }
 
 function exitPreview(entryTime: string, duration: number) {
   if (!entryTime || !duration) return ''
@@ -35,6 +36,7 @@ export default function RegistrationForm({
   const [email] = useState(initialEmail)
   const [address, setAddress] = useState('')
   const [slots, setSlots] = useState<Slot[]>([])
+  const [seats, setSeats] = useState<Seat[]>([])
   const [slotId, setSlotId] = useState('')
   const [entryTime, setEntryTime] = useState('')
   const [seatNumber, setSeatNumber] = useState('')
@@ -44,10 +46,14 @@ export default function RegistrationForm({
 
   useEffect(() => {
     async function loadSlots() {
-      const { data, error } = await supabase.from('study_slots').select('id,label,duration_hours').eq('active', true).order('duration_hours')
+      const [{ data, error }, seatResult] = await Promise.all([
+        supabase.from('study_slots').select('id,label,duration_hours,starts_at,ends_at').eq('active', true).order('starts_at'),
+        supabase.from('seats').select('seat_number,label').eq('status', 'available').order('seat_number'),
+      ])
       setSlots((data ?? []) as Slot[])
+      setSeats((seatResult.data ?? []) as Seat[])
       setSlotId((current) => current || data?.[0]?.id || '')
-      if (error) setMessage(error.message)
+      if (error || seatResult.error) setMessage((error ?? seatResult.error)?.message ?? '')
       setLoadingSlots(false)
     }
     void loadSlots()
@@ -70,12 +76,12 @@ export default function RegistrationForm({
     })
     if (error) {
       setMessage(error.code === '23505'
-        ? 'That admission number or seat number is already registered. Please check with the library administrator.'
+        ? 'That admission number is already registered. Please check with the library administrator.'
         : error.message)
       setSaving(false)
       return
     }
-    router.replace('/student')
+    router.replace('/protected')
     router.refresh()
   }
 
@@ -87,12 +93,13 @@ export default function RegistrationForm({
     <label>Phone number<input type="tel" value={phone} onChange={(event) => setPhone(event.target.value)} autoComplete="tel" maxLength={32} required /></label>
     <label>Email address<input type="email" value={email} readOnly required /></label>
     <label>Address<textarea value={address} onChange={(event) => setAddress(event.target.value)} autoComplete="street-address" maxLength={500} rows={3} required /></label>
-    <label>Booking duration{loadingSlots ? <span>Loading durations…</span> : <select value={slotId} onChange={(event) => setSlotId(event.target.value)} required disabled={!slots.length}><option value="" disabled>Select a duration</option>{slots.map((slot) => <option key={slot.id} value={slot.id}>{slot.duration_hours} hours</option>)}</select>}</label>
-    {!loadingSlots && slots.length === 0 && <p className="auth-error">No booking durations are available yet. Please contact the library administrator.</p>}
+    <label>Preferred booking slot{loadingSlots ? <span>Loading slots…</span> : <select value={slotId} onChange={(event) => setSlotId(event.target.value)} required disabled={!slots.length}><option value="" disabled>Select a slot</option>{slots.map((slot) => <option key={slot.id} value={slot.id}>{slot.label} · {slot.duration_hours} hours · {slot.starts_at.slice(0, 5)}–{slot.ends_at.slice(0, 5)}</option>)}</select>}</label>
+    {!loadingSlots && slots.length === 0 && <p className="auth-error">No booking slots are available yet. Please contact the library administrator.</p>}
     <label>Entry time<input type="time" value={entryTime} onChange={(event) => setEntryTime(event.target.value)} required /></label>
     <p className="registration-exit" aria-live="polite">Calculated exit time: <strong>{selectedSlot && entryTime ? exitPreview(entryTime, selectedSlot.duration_hours) : 'Choose a duration and entry time'}</strong></p>
-    <label>Seat number<input value={seatNumber} onChange={(event) => setSeatNumber(event.target.value)} autoComplete="off" maxLength={24} required /></label>
+    <label>Preferred seat{loadingSlots ? <span>Loading seats…</span> : <select value={seatNumber} onChange={(event) => setSeatNumber(event.target.value)} required disabled={!seats.length}><option value="" disabled>Select a seat</option>{seats.map((seat) => <option key={seat.seat_number} value={String(seat.seat_number)}>{seat.label || 'Seat ' + seat.seat_number}</option>)}</select>}</label>
+    {!loadingSlots && seats.length === 0 && <p className="auth-error">No seats are available. Please contact the library administrator.</p>}
     {message && <p className="auth-error" role="alert">{message}</p>}
-    <button className="primary-button auth-submit" type="submit" disabled={saving || loadingSlots || slots.length === 0}>{saving ? 'Saving registration…' : 'Complete registration'}</button>
+    <button className="primary-button auth-submit" type="submit" disabled={saving || loadingSlots || slots.length === 0 || seats.length === 0}>{saving ? 'Saving registration…' : 'Complete registration'}</button>
   </form>
 }

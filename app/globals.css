@@ -118,3 +118,62 @@ footer { max-width: 1155px; margin: auto; padding: 35px 0; display: flex; justif
 .slot-form select { border: 1px solid #d4ddd4; background: #fffdf8; color: var(--ink); padding: 9px; font: inherit; }
 .slot-form p { color: var(--muted); font-size: 11px; line-height: 1.6; margin: 0; }
 @media (max-width: 700px) { .student-book-form { grid-template-columns: 1fr; } }
+
+.student-nav, .admin-nav { display: flex; gap: 7px; flex-wrap: wrap; margin: 0 0 22px; }
+.student-nav a, .admin-nav a { display: inline-flex; align-items: center; padding: 10px 12px; border: 1px solid #ffffff22; color: #d3ded7; font-size: 10px; text-decoration: none; }
+.student-nav a.active, .admin-nav a.active { background: #d9a34b; border-color: #d9a34b; color: #183731; }
+.student-summary-grid, .admin-stat-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.student-summary-grid .student-card { display: grid; gap: 8px; min-height: 125px; align-content: start; }
+.student-summary-grid small, .admin-stat-grid small { color: #82918a; text-transform: uppercase; letter-spacing: 1px; font-size: 9px; }
+.student-summary-grid strong, .admin-stat-grid strong { color: var(--ink); font: normal 22px Georgia; text-transform: capitalize; }
+.student-summary-grid span:not(.status-pill), .admin-stat-grid span { color: #73837d; font-size: 10px; line-height: 1.5; }
+.student-alert { border-left: 3px solid #bd8c43; }
+.student-alert a { color: #8a622d; font-weight: 700; margin-left: 6px; }
+.muted-copy { color: var(--muted); font-size: 12px; line-height: 1.7; }
+.student-book-form.booking-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); max-width: none; align-items: end; }
+.booking-form .seat-picker { grid-column: 1 / -1; }
+.seat-picker-label { display: block; margin: 8px 0; color: var(--ink); font-size: 11px; }
+.student-seat-map { grid-template-columns: repeat(8, minmax(0, 1fr)); margin: 10px 0; }
+.student-seat-map .seat { aspect-ratio: 1.4; font-size: 11px; }
+.student-seat-map .seat:disabled { opacity: .6; cursor: not-allowed; }
+.seat-picker > small { color: #7d8d84; font-size: 10px; }
+.record-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.danger-action { color: #a44838; }
+.payment-form, .profile-form { max-width: 580px; }
+.payment-form select, .payment-form textarea, .profile-form textarea, .profile-form input[readonly], .search-label input, .admin-inline-form input, .slot-admin-form input, .slot-admin-form select, .settings-form input, .settings-form textarea, .slot-edit-card input, .slot-edit-card select { border: 1px solid #d4ddd4; background: #fffdf8; color: var(--ink); padding: 11px; font: inherit; font-size: 12px; }
+.payment-form label, .profile-form label, .search-label, .admin-inline-form label, .slot-admin-form label, .settings-form label, .slot-edit-card label { display: grid; gap: 7px; color: var(--ink); font-size: 10px; }
+.payment-instructions { margin: 0; padding: 14px; background: #eef2e9; color: #60766c; font-size: 11px; line-height: 1.7; white-space: pre-wrap; }
+.payment-instructions p { margin: 6px 0 0; }
+.payment-amount { color: #73837d; font-size: 12px; }
+.payment-amount strong { color: var(--ink); font: 18px Georgia; }
+.admin-stat-grid { margin-bottom: 20px; }
+.admin-stat-grid article { display: grid; gap: 7px; padding: 19px; background: var(--paper); }
+.admin-stat-grid strong { font-size: 30px; }
+.admin-quicklinks { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 9px; margin-top: 20px; }
+.admin-quicklinks a { display: grid; gap: 8px; padding: 16px; background: #eef2e9; color: var(--ink); text-decoration: none; }
+.admin-quicklinks strong { font: normal 17px Georgia; }
+.admin-quicklinks span { color: #73837d; font-size: 10px; }
+.search-label { max-width: 400px; margin: 20px 0; }
+.admin-inline-form { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; margin: 20px 0 28px; }
+.admin-inline-form label { min-width: 170px; }
+.seat-admin-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 9px; }
+.seat-admin-card { display: grid; gap: 7px; padding: 12px; background: #eef2e9; }
+.seat-admin-card strong { font: 15px Georgia; }
+.seat-admin-card small { color: #73837d; font-size: 9px; }
+.seat-admin-card select { width: 100%; border: 1px solid #d4ddd4; background: #fffdf8; color: var(--ink); padding: 8px; font: inherit; font-size: 10px; }
+.slot-admin-layout { display: grid; grid-template-columns: minmax(260px, .8fr) minmax(0, 1.2fr); gap: 16px; align-items: start; }
+.slot-admin-form { margin-top: 20px; }
+.slot-edit-list { display: grid; gap: 12px; margin-top: 20px; }
+.slot-edit-card { display: grid; gap: 11px; padding: 14px; background: #eef2e9; }
+.slot-edit-card .manage-action { justify-self: start; }
+.settings-form { margin-top: 20px; }
+.settings-form textarea { resize: vertical; }
+@media (max-width: 850px) { .student-summary-grid, .admin-stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }.seat-admin-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }.admin-quicklinks { grid-template-columns: repeat(2, minmax(0, 1fr)); }.slot-admin-layout { grid-template-columns: 1fr; } }
+@media (max-width: 600px) { .student-nav, .admin-nav { overflow-x: auto; flex-wrap: nowrap; padding-bottom: 6px; }.student-nav a, .admin-nav a { flex: 0 0 auto; }.student-book-form.booking-form { grid-template-columns: 1fr; }.student-seat-map { grid-template-columns: repeat(6, minmax(0, 1fr)); }.seat-admin-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }.admin-quicklinks { grid-template-columns: 1fr; }.student-summary-grid, .admin-stat-grid { grid-template-columns: 1fr 1fr; }.admin-inline-form { align-items: stretch; flex-direction: column; }.admin-inline-form label { width: 100%; } }
+.inventory-seat-map { grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 9px; }
+.inventory-seat { display: grid; place-items: center; cursor: default; aspect-ratio: 1.35; background: #e6ece5; color: #526c5f; border-color: #cfdbd0; }
+.booking-intro .legend { color: #afc2b8; font-size: 10px; }
+.plan { display: block; cursor: default; }
+.plan-check { line-height: 1.5; }
+.plan.featured .plan-check { color: #aebdb6; }
+@media (max-width: 700px) { .inventory-seat-map { grid-template-columns: repeat(6, minmax(0, 1fr)); }.inventory-seat { font-size: 9px; } }

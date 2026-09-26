@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import AdminDashboard from './AdminDashboard'
+import AdminOperations from './AdminOperations'
 
 export default async function AdminPage() {
   const supabase = await createClient()
@@ -17,5 +17,5 @@ export default async function AdminPage() {
     redirect('/student')
   }
 
-  return <AdminDashboard />
+  return <AdminOperations section="dashboard" />
 }

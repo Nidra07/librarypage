@@ -3,7 +3,6 @@
 import { FormEvent, useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
-import StudentManagement from './StudentManagement'
 
 type Story = {
   id: string
@@ -197,14 +196,12 @@ export default function AdminDashboard() {
           </div>
 
           <Link
-            href="/"
+            href="/admin"
             className="text-button"
           >
-            Back to library →
+            Back to admin dashboard →
           </Link>
         </div>
-
-        <StudentManagement />
 
         <div className="admin-grid">
 
