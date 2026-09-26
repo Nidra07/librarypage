@@ -44,7 +44,7 @@ export default function LoginPage() {
     if (role === 'admin') {
       router.replace('/admin')
     } else {
-      router.replace('/protected')
+      router.replace('/student')
     }
 
     router.refresh()
