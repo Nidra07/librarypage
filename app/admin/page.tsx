@@ -14,7 +14,7 @@ export default async function AdminPage() {
   }
 
   if (user.app_metadata?.role !== 'admin') {
-    redirect('/protected')
+    redirect('/student')
   }
 
   return <AdminDashboard />
