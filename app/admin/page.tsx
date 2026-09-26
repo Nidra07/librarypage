@@ -4,18 +4,10 @@ import AdminDashboard from './AdminDashboard'
 
 export default async function AdminPage() {
   const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) {
-    redirect('/auth/login')
-  }
-
-  if (user.app_metadata?.role !== 'admin') {
-    redirect('/student')
-  }
+  if (!user) redirect('/auth/login')
+  if (user.app_metadata?.role !== 'admin') redirect('/protected')
 
   return <AdminDashboard />
 }
