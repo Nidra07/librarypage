@@ -1,11 +1,23 @@
-import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
+'use client'
+
+import { FormEvent, useEffect, useState } from 'react'
+import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 
-export default async function AdminPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/auth/login')
-  if (user.app_metadata?.role !== 'admin') redirect('/student')
-  return <main className="member-page"><div className="member-panel"><span className="eyebrow">Admin portal</span><h1>Good morning, librarian.</h1><p>Signed in as {user.email}. Manage seats, members, and daily operations from here.</p><Link href="/" className="primary-button">Back to library</Link></div></main>
+type Story = { id: string; student_name: string; photo_url: string | null; job_title: string; organization: string; department: string | null; exam_name: string; selection_year: number; preparation_duration: string | null; testimonial: string | null; success_story: string | null; display_order: number; published: boolean; student_consent: boolean }
+const blank = { student_name: '', photo_url: '', job_title: '', organization: '', department: '', exam_name: '', selection_year: new Date().getFullYear(), preparation_duration: '', testimonial: '', success_story: '', display_order: 0, published: false, student_consent: false }
+
+export default function AdminPage() {
+  const [stories, setStories] = useState<Story[]>([])
+  const [form, setForm] = useState(blank)
+  const [editing, setEditing] = useState<string | null>(null)
+  const [message, setMessage] = useState('')
+  const supabase = createClient()
+  async function load() { const { data } = await supabase.from('government_job_achievers').select('*').order('display_order').order('selection_year', { ascending: false }); setStories((data ?? []) as Story[]) }
+  useEffect(() => { load() }, [])
+  function update(key: keyof typeof blank, value: string | number | boolean) { setForm((current) => ({ ...current, [key]: value })) }
+  async function save(event: FormEvent) { event.preventDefault(); setMessage(''); const payload = { ...form, photo_url: form.photo_url || null, department: form.department || null, preparation_duration: form.preparation_duration || null, testimonial: form.testimonial || null, success_story: form.success_story || null }; const result = editing ? await supabase.from('government_job_achievers').update(payload).eq('id', editing) : await supabase.from('government_job_achievers').insert(payload); if (result.error) { setMessage(result.error.message); return }; setForm(blank); setEditing(null); setMessage('Success story saved.'); load() }
+  function edit(story: Story) { setEditing(story.id); setForm({ student_name: story.student_name, photo_url: story.photo_url ?? '', job_title: story.job_title, organization: story.organization, department: story.department ?? '', exam_name: story.exam_name, selection_year: story.selection_year, preparation_duration: story.preparation_duration ?? '', testimonial: story.testimonial ?? '', success_story: story.success_story ?? '', display_order: story.display_order, published: story.published, student_consent: story.student_consent }) }
+  async function remove(id: string) { if (!window.confirm('Delete this success story?')) return; await supabase.from('government_job_achievers').delete().eq('id', id); load() }
+  return <main className="member-page admin-page"><div className="admin-wrap"><div className="admin-heading"><div><span className="eyebrow">Admin portal</span><h1>Success stories</h1><p>Publish verified government job achievers from The Peaceful Pages.</p></div><Link href="/" className="text-button">Back to library →</Link></div><div className="admin-grid"><form className="admin-form" onSubmit={save}><h2>{editing ? 'Edit achiever' : 'Add achiever'}</h2>{[['student_name','Student name'],['photo_url','Photo URL'],['job_title','Government job / post'],['organization','Organization'],['department','Department'],['exam_name','Exam name'],['preparation_duration','Preparation duration'],['testimonial','Testimonial'],['success_story','Detailed success story']].map(([key, label]) => <label key={key}>{label}<input value={String(form[key as keyof typeof form])} onChange={(event) => update(key as keyof typeof blank, event.target.value)} required={['student_name','job_title','organization','exam_name'].includes(key)} /></label>)}<div className="admin-two"><label>Selection year<input type="number" value={form.selection_year} onChange={(event) => update('selection_year', Number(event.target.value))} /></label><label>Display order<input type="number" value={form.display_order} onChange={(event) => update('display_order', Number(event.target.value))} /></label></div><label className="check-row"><input type="checkbox" checked={form.student_consent} onChange={(event) => update('student_consent', event.target.checked)} /> Student consent obtained</label><label className="check-row"><input type="checkbox" checked={form.published} onChange={(event) => update('published', event.target.checked)} /> Publish on website</label><div className="admin-actions"><button className="primary-button" type="submit">{editing ? 'Update story' : 'Add story'}</button>{editing && <button type="button" className="text-button" onClick={() => { setEditing(null); setForm(blank) }}>Cancel</button>}</div>{message && <p className="admin-message" role="status">{message}</p>}</form><section className="admin-list"><h2>Published and draft stories</h2>{stories.length ? stories.map((story) => <article className="admin-story" key={story.id}><div><strong>{story.student_name}</strong><span>{story.job_title} · {story.selection_year}</span><small>{story.published && story.student_consent ? 'Published' : 'Draft / consent needed'}</small></div><div><button onClick={() => edit(story)}>Edit</button><button onClick={() => remove(story.id)}>Delete</button></div></article>) : <p className="admin-empty">No achievers added yet.</p>}</section></div></div></main>
 }
