@@ -77,6 +77,10 @@ footer { max-width: 1155px; margin: auto; padding: 35px 0; display: flex; justif
 .student-billing-fields > small { max-width: 240px; line-height: 1.5; }
 .manage-table input, .manage-table select, .slot-form input, .student-book-form input, .student-book-form select { border: 1px solid #d4ddd4; background: #fffdf8; color: var(--ink); padding: 9px; font: inherit; }
 .manage-action { border: 0; background: transparent; color: #9a713a; font-size: 10px; cursor: pointer; padding: 6px; white-space: nowrap; }
+.attendance-month-label { display: grid; gap: 6px; color: #60766c; font-size: 10px; }
+.attendance-month-label input { border: 1px solid #d4ddd4; background: #fffdf8; color: var(--ink); padding: 9px; font: inherit; }
+.attendance-detail-heading { margin-top: 28px; }
+.time-validation { color: #a54f39; }
 .status-pill { display: inline-flex; align-items: center; border-radius: 99px; padding: 5px 9px; background: #edf0eb; color: #718078; text-transform: capitalize; font-size: 9px; white-space: nowrap; }
 .status-pill.active { background: #e4eee2; color: #4f7458; }
 .status-pill.inactive { background: #f7e5df; color: #9a4d3b; }
