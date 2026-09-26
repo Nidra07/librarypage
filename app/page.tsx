@@ -66,7 +66,7 @@ export default function Page() {
           <a href="#seats" onClick={() => setMenuOpen(false)}>Study Seats</a>
           <a href="#pricing" onClick={() => setMenuOpen(false)}>Pricing</a>
           <a href="#contact" onClick={() => setMenuOpen(false)}>Contact</a>
-          <button className="nav-login" onClick={() => showToast('Student login opens here.')}>Student Login <ArrowRight /></button>
+          <a className="nav-login" href="/auth/login">Student Login <ArrowRight /></a>
         </nav>
       </header>
 
@@ -101,7 +101,7 @@ export default function Page() {
 
       <section className="section pricing" id="pricing"><div className="section-heading"><div><div className="eyebrow">Simple membership</div><h2>Find your<br /><em>flow.</em></h2></div><p>Come for a day or make us part of your routine. All plans include high-speed Wi-Fi, charging access, and a peaceful place to focus.</p></div><div className="plans">{plans.map((plan) => <button key={plan.name} className={`plan ${plan.featured ? 'featured' : ''} ${activePlan === plan.name ? 'active' : ''}`} onClick={() => setActivePlan(plan.name)}>{plan.featured && <span className="popular">Most loved</span>}<span className="plan-name">{plan.name}</span><strong>{plan.price}</strong><span className="plan-detail">{plan.detail}</span><span className="plan-check"><Check /> Includes seat booking</span></button>)}</div></section>
 
-      <section className="cta-section" id="contact"><div><div className="eyebrow">Your next chapter starts here</div><h2>Make room for<br /><em>what matters.</em></h2></div><div><p>Ready to find your place? Come see why focused people choose Peaceful Pages.</p><button className="light-button" onClick={() => showToast('Welcome to Peaceful Pages.')}>Register as a student <ArrowRight /></button></div></section>
+      <section className="cta-section" id="contact"><div><div className="eyebrow">Your next chapter starts here</div><h2>Make room for<br /><em>what matters.</em></h2></div><div><p>Ready to find your place? Come see why focused people choose Peaceful Pages.</p><a className="light-button" href="/auth/sign-up">Register as a student <ArrowRight /></a></div></section>
       <footer><a href="#home" className="brand"><span className="brand-mark"><BookOpen /></span><span><strong>The Peaceful Pages</strong><small>LIBRARY</small></span></a><span className="footer-copy">Read. Relax. Rise.</span><div className="socials"><a href="#contact" aria-label="WhatsApp"><MessageCircle /></a><a href="#contact" aria-label="Instagram"><Camera /></a><a href="#contact" aria-label="Google Maps"><MapPin /></a></div></footer>
       {toast && <div className="toast" role="status"><Check /> {toast}</div>}
     </main>
