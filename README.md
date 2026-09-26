@@ -34,15 +34,17 @@ To learn more, take a look at the following resources:
 
 ## Student and booking management
 
-Before using the student portal or the management panels, apply
-[`supabase/migrations/20260927000000_student_management.sql`](supabase/migrations/20260927000000_student_management.sql)
-to the Supabase project connected to this app. You can run its contents in the
-Supabase SQL Editor or apply it with the Supabase CLI. It creates the student,
-slot, booking, and attendance tables, syncs new auth users into student
-profiles, and enables row-level security policies.
+Before using the student portal or the management panels, apply the SQL
+migrations in supabase/migrations in filename order to the Supabase project
+connected to this app, or use the Supabase CLI. The student-management
+migration creates the student, slot, booking, and attendance tables. The
+registration migrations add a one-time student registration form and change
+booking slots to 4, 6, 8, or 12-hour durations. Students enter their entry
+time; the database calculates the exit time automatically.
 
 The admin dashboard recognizes administrators through the trusted
-`app_metadata.role = "admin"` claim. Assign that claim only from a trusted
+app_metadata.role = "admin" claim. Assign that claim only from a trusted
 server-side Supabase Admin API workflow; never put a service-role key in the
-browser. Students can book while their profile is active and check in to a
-booking on its visit date.
+browser. After signing up and confirming their email, students complete the
+one-time registration before they can access the student portal. Active,
+registered students can book visits and check in on the visit date.

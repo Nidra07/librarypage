@@ -107,3 +107,14 @@ footer { max-width: 1155px; margin: auto; padding: 35px 0; display: flex; justif
 .student-record div > span { color: #73837d; font-size: 10px; margin-top: 5px; }
 .student-record small { color: #89958e; font-size: 9px; margin-top: 5px; }
 @media (max-width: 700px) { .manage-panel { padding: 22px 16px; }.manage-slots, .student-columns { grid-template-columns: 1fr; }.student-header { display: block; }.student-header .text-button { margin-top: 18px; }.student-book-form { grid-template-columns: 1fr; }.student-card { padding: 21px 17px; }.student-header h1 { font-size: 39px; } }
+
+.auth-card.registration-card { width: min(100%, 620px); }
+.registration-form select, .registration-form textarea { border: 1px solid #d4ddd4; background: #fffdf8; padding: 13px; color: var(--ink); outline: none; font: inherit; font-size: 13px; }
+.registration-form textarea { resize: vertical; min-height: 84px; }
+.registration-form input[readonly] { background: #f0eee6; }
+.registration-exit { margin: -5px 0 0; padding: 11px 13px; background: #e4eee2; color: #4f7458; font-size: 11px; line-height: 1.5; }
+.student-book-form { grid-template-columns: minmax(180px, 1fr) auto; max-width: 500px; }
+.student-book-form button:disabled, .registration-form button:disabled { opacity: .55; cursor: not-allowed; }
+.slot-form select { border: 1px solid #d4ddd4; background: #fffdf8; color: var(--ink); padding: 9px; font: inherit; }
+.slot-form p { color: var(--muted); font-size: 11px; line-height: 1.6; margin: 0; }
+@media (max-width: 700px) { .student-book-form { grid-template-columns: 1fr; } }
