@@ -70,6 +70,11 @@ footer { max-width: 1155px; margin: auto; padding: 35px 0; display: flex; justif
 .manage-table td { padding: 13px 11px; border-bottom: 1px solid #e3e7df; min-width: 100px; }
 .manage-table td strong, .manage-table td small { display: block; }
 .manage-table td small { color: #85918a; margin-top: 5px; }
+.student-billing-fields { display: grid; gap: 8px; min-width: 190px; }
+.student-billing-fields label { display: grid; gap: 4px; color: #60766c; font-size: 10px; }
+.student-billing-fields .checkbox-label { display: flex; align-items: center; gap: 7px; }
+.student-billing-fields .checkbox-label input { width: auto; }
+.student-billing-fields > small { max-width: 240px; line-height: 1.5; }
 .manage-table input, .manage-table select, .slot-form input, .student-book-form input, .student-book-form select { border: 1px solid #d4ddd4; background: #fffdf8; color: var(--ink); padding: 9px; font: inherit; }
 .manage-action { border: 0; background: transparent; color: #9a713a; font-size: 10px; cursor: pointer; padding: 6px; white-space: nowrap; }
 .status-pill { display: inline-flex; align-items: center; border-radius: 99px; padding: 5px 9px; background: #edf0eb; color: #718078; text-transform: capitalize; font-size: 9px; white-space: nowrap; }
@@ -144,6 +149,7 @@ footer { max-width: 1155px; margin: auto; padding: 35px 0; display: flex; justif
 .payment-form label, .profile-form label, .search-label, .admin-inline-form label, .slot-admin-form label, .settings-form label, .slot-edit-card label { display: grid; gap: 7px; color: var(--ink); font-size: 10px; }
 .payment-instructions { margin: 0; padding: 14px; background: #eef2e9; color: #60766c; font-size: 11px; line-height: 1.7; white-space: pre-wrap; }
 .payment-instructions p { margin: 6px 0 0; }
+.payment-upi-link { display: inline-block; margin-top: 12px; padding: 9px 12px; background: #315b48; color: #fffdf8; text-decoration: none; font-size: 11px; }
 .payment-amount { color: #73837d; font-size: 12px; }
 .payment-amount strong { color: var(--ink); font: 18px Georgia; }
 .admin-stat-grid { margin-bottom: 20px; }
@@ -177,3 +183,4 @@ footer { max-width: 1155px; margin: auto; padding: 35px 0; display: flex; justif
 .plan-check { line-height: 1.5; }
 .plan.featured .plan-check { color: #aebdb6; }
 @media (max-width: 700px) { .inventory-seat-map { grid-template-columns: repeat(6, minmax(0, 1fr)); }.inventory-seat { font-size: 9px; } }
+
