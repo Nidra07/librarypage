@@ -31,3 +31,18 @@ To learn more, take a look at the following resources:
 - [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
 - [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
 - [v0 Documentation](https://v0.app/docs) - learn about v0 and how to use it.
+
+## Student and booking management
+
+Before using the student portal or the management panels, apply
+[`supabase/migrations/20260927000000_student_management.sql`](supabase/migrations/20260927000000_student_management.sql)
+to the Supabase project connected to this app. You can run its contents in the
+Supabase SQL Editor or apply it with the Supabase CLI. It creates the student,
+slot, booking, and attendance tables, syncs new auth users into student
+profiles, and enables row-level security policies.
+
+The admin dashboard recognizes administrators through the trusted
+`app_metadata.role = "admin"` claim. Assign that claim only from a trusted
+server-side Supabase Admin API workflow; never put a service-role key in the
+browser. Students can book while their profile is active and check in to a
+booking on its visit date.
