@@ -127,7 +127,7 @@ begin
     if v_amount is null then raise exception 'The library has not configured a monthly fee for you yet.'; end if;
     if exists (select 1 from public.payments p where p.student_id = v_student and p.payment_type = 'monthly'
       and p.billing_month = p_billing_month and p.status = 'verified' and p.amount >= v_amount) then
-      raise exception 'This month's current payment has already been verified.';
+      raise exception 'The current payment for this month has already been verified.';
     end if;
 
     -- Lock the seat row so concurrent payment submissions cannot claim the same
@@ -213,7 +213,7 @@ begin
       select coalesce(v_profile.monthly_fee_override, s.monthly_fee) into v_monthly_fee
         from public.library_settings s where s.singleton;
       if v_monthly_fee is null or v_payment.amount < v_monthly_fee then
-        raise exception 'The student's monthly fee changed after this payment was submitted. Reject it and ask the student to resubmit.';
+        raise exception 'The monthly fee for this student changed after this payment was submitted. Reject it and ask the student to resubmit.';
       end if;
       if v_payment.seat_number is null then raise exception 'This monthly payment has no seat selected. Reject it and ask the student to resubmit.'; end if;
       if not exists (select 1 from public.seats s where s.seat_number = v_payment.seat_number and s.status = 'available') then
@@ -222,7 +222,7 @@ begin
     elsif v_payment.payment_type = 'registration' then
       v_registration_fee := case when v_profile.registration_fee_waived then 0 else 100 - v_profile.registration_fee_discount end;
       if v_registration_fee <= 0 or v_payment.amount < v_registration_fee then
-        raise exception 'The student's registration fee changed or was waived. Reject this payment and ask the student to check the current amount.';
+        raise exception 'The registration fee for this student changed or was waived. Reject this payment and ask the student to check the current amount.';
       end if;
     end if;
   end if;
