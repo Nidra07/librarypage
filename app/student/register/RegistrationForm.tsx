@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
 type Slot = { id: string; label: string; duration_hours: number; starts_at: string; ends_at: string }
-type Seat = { seat_number: number; label: string }
 
 function exitPreview(entryTime: string, duration: number) {
   if (!entryTime || !duration) return ''
@@ -36,24 +35,18 @@ export default function RegistrationForm({
   const [email] = useState(initialEmail)
   const [address, setAddress] = useState('')
   const [slots, setSlots] = useState<Slot[]>([])
-  const [seats, setSeats] = useState<Seat[]>([])
   const [slotId, setSlotId] = useState('')
   const [entryTime, setEntryTime] = useState('')
-  const [seatNumber, setSeatNumber] = useState('')
   const [message, setMessage] = useState('')
   const [loadingSlots, setLoadingSlots] = useState(true)
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
     async function loadSlots() {
-      const [{ data, error }, seatResult] = await Promise.all([
-        supabase.from('study_slots').select('id,label,duration_hours,starts_at,ends_at').eq('active', true).order('starts_at'),
-        supabase.from('seats').select('seat_number,label').eq('status', 'available').order('seat_number'),
-      ])
+      const { data, error } = await supabase.from('study_slots').select('id,label,duration_hours,starts_at,ends_at').eq('active', true).order('starts_at')
       setSlots((data ?? []) as Slot[])
-      setSeats((seatResult.data ?? []) as Seat[])
       setSlotId((current) => current || data?.[0]?.id || '')
-      if (error || seatResult.error) setMessage((error ?? seatResult.error)?.message ?? '')
+      if (error) setMessage(error.message)
       setLoadingSlots(false)
     }
     void loadSlots()
@@ -72,7 +65,6 @@ export default function RegistrationForm({
       address: address.trim(),
       slot_id: slotId,
       entry_time: entryTime,
-      seat_number: seatNumber.trim(),
     })
     if (error) {
       setMessage(error.code === '23505'
@@ -97,9 +89,8 @@ export default function RegistrationForm({
     {!loadingSlots && slots.length === 0 && <p className="auth-error">No booking slots are available yet. Please contact the library administrator.</p>}
     <label>Entry time<input type="time" value={entryTime} onChange={(event) => setEntryTime(event.target.value)} required /></label>
     <p className="registration-exit" aria-live="polite">Calculated exit time: <strong>{selectedSlot && entryTime ? exitPreview(entryTime, selectedSlot.duration_hours) : 'Choose a duration and entry time'}</strong></p>
-    <label>Preferred seat{loadingSlots ? <span>Loading seats…</span> : <select value={seatNumber} onChange={(event) => setSeatNumber(event.target.value)} required disabled={!seats.length}><option value="" disabled>Select a seat</option>{seats.map((seat) => <option key={seat.seat_number} value={String(seat.seat_number)}>{seat.label || 'Seat ' + seat.seat_number}</option>)}</select>}</label>
-    {!loadingSlots && seats.length === 0 && <p className="auth-error">No seats are available. Please contact the library administrator.</p>}
+    <p className="payment-instructions">Choose a vacant seat when you submit your monthly payment. The seat is held while payment is reviewed and allocated after confirmation.</p>
     {message && <p className="auth-error" role="alert">{message}</p>}
-    <button className="primary-button auth-submit" type="submit" disabled={saving || loadingSlots || slots.length === 0 || seats.length === 0}>{saving ? 'Saving registration…' : 'Complete registration'}</button>
+    <button className="primary-button auth-submit" type="submit" disabled={saving || loadingSlots || slots.length === 0}>{saving ? 'Saving registration…' : 'Complete registration'}</button>
   </form>
 }

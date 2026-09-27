@@ -141,6 +141,8 @@ footer { max-width: 1155px; margin: auto; padding: 35px 0; display: flex; justif
 .muted-copy { color: var(--muted); font-size: 12px; line-height: 1.7; }
 .student-book-form.booking-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); max-width: none; align-items: end; }
 .booking-form .seat-picker { grid-column: 1 / -1; }
+.student-booking-seat { grid-column: 1 / -1; color: var(--ink); }
+.student-booking-seat p { margin: 7px 0 0; line-height: 1.6; }
 .seat-picker-label { display: block; margin: 8px 0; color: var(--ink); font-size: 11px; }
 .student-seat-map { grid-template-columns: repeat(8, minmax(0, 1fr)); margin: 10px 0; }
 .student-seat-map .seat { aspect-ratio: 1.4; font-size: 11px; }
