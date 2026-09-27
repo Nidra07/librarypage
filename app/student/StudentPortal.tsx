@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import { STUDENT_APP_APK_URL } from '@/lib/student-app'
 
 type Section = 'dashboard' | 'book' | 'bookings' | 'attendance' | 'payments' | 'profile'
 type Profile = { id: string; full_name: string; email: string; phone: string | null; address: string; status: 'active' | 'inactive' | 'suspended'; monthly_fee_override: number | null; registration_fee_discount: number; registration_fee_waived: boolean; default_slot_id: string | null }
@@ -262,9 +263,14 @@ export default function StudentPortal({ userId, section = 'dashboard' }: { userI
     </p>
   </div>
 
-  <Link href="/" className="text-button">
-    Back to library {"\u2192"}
-  </Link>
+  <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+    <a href={STUDENT_APP_APK_URL} className="primary-button" download>
+      Download Android app
+    </a>
+    <Link href="/" className="text-button">
+      Back to library {"\u2192"}
+    </Link>
+  </div>
 </header>
     <nav className="student-nav" aria-label="Student dashboard">{nav.map((item) => <Link key={item.id} href={item.href} className={section === item.id ? 'active' : ''}>{item.label}</Link>)}</nav>
     {message && <p className="manage-message" role="status">{message}</p>}

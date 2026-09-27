@@ -1,0 +1,83 @@
+name: Build student portal APK
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "student-app/**"
+      - ".github/workflows/build-student-portal-apk.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  android:
+    name: Build Android APK
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22.16.0"
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install JavaScript dependencies
+        working-directory: student-app
+        run: npm install --no-audit --no-fund
+
+      - name: Install Expo compatible date and time picker
+        working-directory: student-app
+        run: npx expo install @react-native-community/datetimepicker react-native-safe-area-context
+
+      - name: Type-check student app
+        working-directory: student-app
+        run: npx tsc --noEmit
+
+      - name: Generate Android project
+        working-directory: student-app
+        run: npx expo prebuild --platform android --non-interactive --clean
+
+      - name: Build release APK
+        working-directory: student-app/android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon
+
+      - name: Stage APK
+        working-directory: student-app
+        run: |
+          mkdir -p dist
+          cp android/app/build/outputs/apk/release/app-release.apk dist/student-portal.apk
+
+      - name: Keep a downloadable build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: student-portal-apk
+          path: student-app/dist/student-portal.apk
+          retention-days: 30
+
+      - name: Publish the APK to the latest GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view student-portal >/dev/null 2>&1; then
+            gh release upload student-portal student-app/dist/student-portal.apk --clobber
+          else
+            gh release create student-portal student-app/dist/student-portal.apk \
+              --title "Peaceful Pages Student Portal" \
+              --notes "Install this Android APK to sign in to the student portal. Account creation and registration remain on the website." \
+              --latest
+          fi
+

@@ -1,0 +1,18 @@
+{
+  "expo": {
+    "name": "Peaceful Pages Student",
+    "slug": "peaceful-pages-student",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "android": {
+      "package": "com.peacefulpages.studentportal",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "backgroundColor": "#183c32"
+      }
+    }
+  }
+}
+
+
