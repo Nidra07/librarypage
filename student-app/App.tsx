@@ -19,7 +19,7 @@ import type { User } from '@supabase/supabase-js';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from './src/supabase';
 
-type Screen = 'home' | 'bookings' | 'payments' | 'profile' | 'book';
+type Screen = 'home' | 'bookings' | 'payments' | 'profile' | 'book' | 'attendance';
 type PaymentType = 'registration' | 'monthly';
 type PaymentMethod = 'phonepe' | 'cash';
 type Profile = {
@@ -43,7 +43,9 @@ type Registration = {
   slot_id: string;
   entry_time: string;
   seat_number: string | null;
+  created_at: string;
 };
+type SeatAssignment = { seat_number: number };
 type Slot = { id: string; label: string; duration_hours: number; active: boolean };
 type Booking = {
   id: string;
@@ -55,6 +57,7 @@ type Booking = {
   exit_day_offset: number;
   status: 'confirmed' | 'cancelled' | 'completed';
 };
+type Attendance = { id: string; booking_id: string; attended_on: string; status: 'present' | 'absent' };
 type Payment = {
   id: string;
   payment_type: PaymentType;
@@ -72,8 +75,10 @@ type LibrarySettings = { monthly_fee: number | null; phonepe_upi_id: string; pho
 type StudentData = {
   profile: Profile | null;
   registration: Registration | null;
+  seatAssignment: SeatAssignment | null;
   slots: Slot[];
   bookings: Booking[];
+  attendance: Attendance[];
   payments: Payment[];
   settings: LibrarySettings;
 };
@@ -93,6 +98,24 @@ function indiaDate(date = new Date()) {
 }
 function firstOfMonth(date: string) {
   return date.slice(0, 7) + '-01';
+}
+function shiftMonth(value: string, amount: number) {
+  const date = new Date(value + 'T00:00:00Z');
+  date.setUTCMonth(date.getUTCMonth() + amount);
+  return date.toISOString().slice(0, 10);
+}
+function monthsBetween(start: string, end: string) {
+  const months: string[] = [];
+  for (let month = start; month <= end; month = shiftMonth(month, 1)) months.push(month);
+  return months;
+}
+function daysUntil(value: string) {
+  return Math.max(0, Math.ceil((Date.parse(value + 'T00:00:00Z') - Date.parse(indiaDate() + 'T00:00:00Z')) / 86400000));
+}
+function indiaMinutes() {
+  const parts = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date());
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return Number(values.hour) * 60 + Number(values.minute);
 }
 function formatDate(value: string) {
   return new Date(value + 'T12:00:00').toLocaleDateString('en-IN', {
@@ -137,22 +160,26 @@ function dateValue(date: Date) {
 }
 
 async function fetchStudentData(studentId: string): Promise<{ data: StudentData | null; error: string | null }> {
-  const [profile, registration, slots, bookings, payments, settings] = await Promise.all([
+  const [profile, registration, seatAssignment, slots, bookings, attendance, payments, settings] = await Promise.all([
     supabase.from('student_profiles').select('id,full_name,email,phone,address,status,monthly_fee_override,registration_fee_discount,registration_fee_waived,default_slot_id').eq('id', studentId).maybeSingle(),
-    supabase.from('student_registrations').select('admission_number,full_name,email,phone,address,slot_id,entry_time,seat_number').eq('student_id', studentId).maybeSingle(),
+    supabase.from('student_registrations').select('admission_number,full_name,email,phone,address,slot_id,entry_time,seat_number,created_at').eq('student_id', studentId).maybeSingle(),
+    supabase.from('student_seat_assignments').select('seat_number').eq('student_id', studentId).maybeSingle(),
     supabase.from('study_slots').select('id,label,duration_hours,active').eq('active', true).order('duration_hours'),
     supabase.from('bookings').select('id,slot_id,booking_date,seat_number,entry_time,exit_time,exit_day_offset,status').eq('student_id', studentId).order('booking_date', { ascending: false }),
+    supabase.from('attendance').select('id,booking_id,attended_on,status').eq('student_id', studentId).order('attended_on', { ascending: false }),
     supabase.from('payments').select('id,payment_type,billing_month,seat_number,amount,method,transaction_reference,status,admin_note,submitted_at').eq('student_id', studentId).order('submitted_at', { ascending: false }),
     supabase.from('library_settings').select('monthly_fee,phonepe_upi_id,phonepe_instructions').eq('singleton', true).maybeSingle(),
   ]);
-  const error = profile.error ?? registration.error ?? slots.error ?? bookings.error ?? payments.error ?? settings.error;
+  const error = profile.error ?? registration.error ?? seatAssignment.error ?? slots.error ?? bookings.error ?? attendance.error ?? payments.error ?? settings.error;
   if (error) return { data: null, error: error.message };
   return {
     data: {
       profile: profile.data as Profile | null,
       registration: registration.data as Registration | null,
+      seatAssignment: seatAssignment.data as SeatAssignment | null,
       slots: (slots.data ?? []) as Slot[],
       bookings: (bookings.data ?? []) as Booking[],
+      attendance: (attendance.data ?? []) as Attendance[],
       payments: (payments.data ?? []) as Payment[],
       settings: (settings.data ?? emptySettings) as LibrarySettings,
     },
@@ -285,6 +312,7 @@ export default function App() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [bookingDate, setBookingDate] = useState(indiaDate());
+  const [attendanceMonth, setAttendanceMonth] = useState(firstOfMonth(indiaDate()));
   const [slotId, setSlotId] = useState('');
   const [entryTime, setEntryTime] = useState('08:00');
   const [paymentType, setPaymentType] = useState<PaymentType>('monthly');
@@ -378,7 +406,15 @@ export default function App() {
   }, [data]);
 
   useEffect(() => {
-    if (screen !== 'payments' || paymentType !== 'monthly' || !data?.registration) {
+    const fee = data?.profile?.monthly_fee_override ?? data?.settings.monthly_fee ?? null;
+    const paidThisMonth = Boolean(data?.payments.some((payment) => payment.payment_type === 'monthly'
+      && payment.billing_month === firstOfMonth(indiaDate()) && payment.status === 'verified'
+      && fee != null && payment.amount >= fee));
+    const chooseForPayment = screen === 'payments' && paymentType === 'monthly'
+      && data?.profile?.status === 'active' && !data.seatAssignment;
+    const chooseAfterReactivation = screen === 'book' && data?.profile?.status === 'active'
+      && !data.seatAssignment && paidThisMonth;
+    if ((!chooseForPayment && !chooseAfterReactivation) || !data?.registration) {
       setSeats([]);
       setLoadingSeats(false);
       return;
@@ -386,7 +422,8 @@ export default function App() {
     let current = true;
     setLoadingSeats(true);
     setSelectedSeat(null);
-    void supabase.rpc('get_monthly_seat_availability', { p_billing_month: billingMonth }).then(({ data: results, error }) => {
+    const availabilityMonth = chooseAfterReactivation ? firstOfMonth(indiaDate()) : billingMonth;
+    void supabase.rpc('get_monthly_seat_availability', { p_billing_month: availabilityMonth }).then(({ data: results, error }) => {
       if (!current) return;
       if (error) {
         setErrorMessage(error.message);
@@ -397,7 +434,7 @@ export default function App() {
       setLoadingSeats(false);
     });
     return () => { current = false; };
-  }, [billingMonth, data?.registration, paymentType, screen]);
+  }, [billingMonth, data, paymentType, screen]);
 
   const registrationFeeDue = data?.profile?.registration_fee_waived
     ? 0
@@ -432,22 +469,43 @@ export default function App() {
     && monthlyFee != null
     && payment.amount >= monthlyFee,
   );
-  const legacyRegistrationSeat = Number(data?.registration?.seat_number) || null;
-  const allocatedSeat = bookingMonthPayment?.seat_number ?? legacyRegistrationSeat;
+  const currentMonth = firstOfMonth(indiaDate());
+  const currentMonthPaid = Boolean(data?.payments.some((payment) => payment.payment_type === 'monthly'
+    && payment.billing_month === currentMonth && payment.status === 'verified'
+    && monthlyFee != null && payment.amount >= monthlyFee));
+  const bookingMonthPaid = Boolean(bookingMonthPayment);
+  const allocatedSeat = data?.seatAssignment?.seat_number ?? null;
   const canBook = Boolean(
     data?.profile?.status === 'active'
     && data.registration
     && hasRegistrationPayment
     && monthlyFee != null
-    && bookingMonthPayment
+    && bookingMonthPaid
     && allocatedSeat != null,
   );
   const selectedSlot = data?.slots.find((slot) => slot.id === slotId);
   const exitMinutes = selectedSlot ? minutes(entryTime) + selectedSlot.duration_hours * 60 : 0;
   const validBookingTime = Boolean(selectedSlot && minutes(entryTime) >= 360 && exitMinutes <= 1320);
-  const nextBooking = [...(data?.bookings ?? [])]
-    .filter((booking) => booking.status === 'confirmed' && booking.booking_date >= indiaDate())
-    .sort((left, right) => left.booking_date.localeCompare(right.booking_date))[0];
+  const attendanceByBookingId = new Map((data?.attendance ?? []).map((record) => [record.booking_id, record]));
+  const monthBookings = (data?.bookings ?? []).filter((booking) => booking.booking_date.slice(0, 7) === attendanceMonth && booking.status !== 'cancelled');
+  const monthAttendance = (data?.attendance ?? []).filter((record) => record.attended_on.slice(0, 7) === attendanceMonth);
+  const monthPresentDays = new Set(monthAttendance.filter((record) => record.status === 'present').map((record) => record.attended_on)).size;
+  const presentDates = new Set(monthAttendance.filter((record) => record.status === 'present').map((record) => record.attended_on));
+  const monthAbsentDays = new Set(monthAttendance.filter((record) => record.status === 'absent' && !presentDates.has(record.attended_on)).map((record) => record.attended_on)).size;
+  const monthUnmarkedVisits = monthBookings.filter((booking) => !attendanceByBookingId.has(booking.id)).length;
+  const currentPresentDays = new Set((data?.attendance ?? []).filter((record) => record.status === 'present' && record.attended_on.slice(0, 7) === currentMonth.slice(0, 7)).map((record) => record.attended_on)).size;
+  const registrationMonth = data?.registration?.created_at ? firstOfMonth(data.registration.created_at.slice(0, 10)) : currentMonth;
+  const verifiedMonthlyPayments = (data?.payments ?? []).filter((payment) => payment.payment_type === 'monthly'
+    && payment.status === 'verified' && monthlyFee != null && payment.amount >= monthlyFee && payment.billing_month);
+  const paidMonths = new Set(verifiedMonthlyPayments.map((payment) => payment.billing_month as string));
+  const pendingFeeMonths = data?.registration && monthlyFee != null && registrationMonth <= currentMonth
+    ? monthsBetween(registrationMonth, currentMonth).filter((month) => !paidMonths.has(month))
+    : [];
+  const latestPaidMonth = verifiedMonthlyPayments.reduce((latest, payment) =>
+    payment.billing_month && payment.billing_month > latest ? payment.billing_month : latest, currentMonth);
+  const nextFeeMonth = pendingFeeMonths[0] ?? monthsBetween(shiftMonth(currentMonth, 1), latestPaidMonth > currentMonth ? latestPaidMonth : shiftMonth(currentMonth, 1)).find((month) => !paidMonths.has(month));
+  const daysToNextFee = nextFeeMonth ? (pendingFeeMonths.length ? 0 : daysUntil(nextFeeMonth)) : null;
+  const nextFeeIsOverdue = Boolean(pendingFeeMonths.length && (pendingFeeMonths[0] < currentMonth || indiaDate() > pendingFeeMonths[0]));
 
   async function refresh() {
     if (user) await loadAccount(user.id);
@@ -499,6 +557,35 @@ export default function App() {
     setSelectedSeat(null);
   }
 
+  async function assignSeat(seatNumber: number) {
+    setBusy(true);
+    setErrorMessage('');
+    setNotice('');
+    const { error } = await supabase.rpc('claim_student_seat', { p_seat_number: seatNumber });
+    setBusy(false);
+    if (error) {
+      setErrorMessage(error.message);
+      return;
+    }
+    setSelectedSeat(null);
+    setNotice('Seat ' + seatNumber + ' is now assigned to you while your account is active.');
+    await refresh();
+  }
+
+  async function markAttendance(bookingId: string) {
+    setBusy(true);
+    setErrorMessage('');
+    setNotice('');
+    const { error } = await supabase.rpc('mark_my_attendance', { p_booking_id: bookingId });
+    setBusy(false);
+    if (error) {
+      setErrorMessage(error.message);
+      return;
+    }
+    setNotice('You have been marked present for today.');
+    await refresh();
+  }
+
   async function createBooking() {
     if (!data || !selectedSlot || !validBookingTime) {
       setErrorMessage('Choose a visit duration and a start time that finishes by 10:00 PM.');
@@ -548,8 +635,13 @@ export default function App() {
       setErrorMessage('There is no payment due for this item.');
       return;
     }
-    if (paymentType === 'monthly' && selectedSeat == null) {
-      setErrorMessage('Choose a vacant seat for this month before submitting payment.');
+    const monthlyPaymentSeat = allocatedSeat ?? selectedSeat;
+    if (paymentType === 'monthly' && data?.profile?.status !== 'active') {
+      setErrorMessage('Ask the administrator to reactivate your account before making a monthly payment.');
+      return;
+    }
+    if (paymentType === 'monthly' && monthlyPaymentSeat == null) {
+      setErrorMessage('Choose a vacant seat before submitting payment.');
       return;
     }
     if (paymentMethod === 'phonepe' && !paymentReference.trim()) {
@@ -565,7 +657,7 @@ export default function App() {
       p_billing_month: paymentType === 'monthly' ? billingMonth : null,
       p_method: paymentMethod,
       p_transaction_reference: paymentMethod === 'phonepe' ? paymentReference.trim() : null,
-      p_seat_number: paymentType === 'monthly' ? selectedSeat : null,
+      p_seat_number: paymentType === 'monthly' ? monthlyPaymentSeat : null,
     });
     setBusy(false);
     if (error) {
@@ -659,6 +751,11 @@ export default function App() {
       : hasRegistrationPayment
         ? 'Verified'
         : currency(registrationFeeDue) + ' due';
+    const feeDueText = daysToNextFee == null
+      ? 'No due date yet'
+      : pendingFeeMonths.length
+        ? (nextFeeIsOverdue ? 'Overdue' : 'Due today')
+        : daysToNextFee === 0 ? 'Due today' : daysToNextFee + (daysToNextFee === 1 ? ' day' : ' days') + ' left';
     return (
       <>
         <View style={styles.hero}>
@@ -672,35 +769,72 @@ export default function App() {
         <View style={styles.metricGrid}>
           <Card><Text style={styles.metricLabel}>Membership</Text><Pill label={data?.profile?.status ?? 'unknown'} status={data?.profile?.status ?? ''} /></Card>
           <Card><Text style={styles.metricLabel}>Registration fee</Text><Text style={styles.metricValue}>{regDueText}</Text></Card>
+          <Card><Text style={styles.metricLabel}>Attendance this month</Text><Text style={styles.metricValue}>{currentPresentDays} days</Text><Text style={styles.muted}>Days attended</Text></Card>
         </View>
         <Card>
-          <Text style={styles.sectionTitle}>Next visit</Text>
-          {nextBooking ? (
-            <>
-              <Text style={styles.recordTitle}>{formatDate(nextBooking.booking_date)}</Text>
-              <Text style={styles.muted}>Seat {nextBooking.seat_number} · {data?.slots.find((slot) => slot.id === nextBooking.slot_id)?.label ?? 'Study visit'}</Text>
-              <Text style={styles.muted}>{formatTime(nextBooking.entry_time)} – {formatTime(nextBooking.exit_time, nextBooking.exit_day_offset)}</Text>
-            </>
-          ) : <Text style={styles.muted}>No upcoming visits. Book a seat when your fees are verified.</Text>}
+          <Text style={styles.sectionTitle}>Monthly fees</Text>
+          <Text style={styles.metricValue}>{currency(monthlyFee)}</Text>
+          <Text style={styles.muted}>Next fee: {feeDueText}{nextFeeMonth ? ' · ' + formatMonth(nextFeeMonth) : ''}</Text>
+          <Text style={styles.muted}>{allocatedSeat == null ? 'No seat assigned. Choose a vacant seat after your current monthly fee is verified.' : 'Seat ' + allocatedSeat + ' stays assigned while your account is active.'}</Text>
+          <Text style={styles.sectionSubtitle}>Pending months</Text>
+          {pendingFeeMonths.length ? pendingFeeMonths.map((month) => (
+            <View key={month} style={styles.recordTop}>
+              <Text style={styles.muted}>{formatMonth(month)}</Text>
+              <Text style={styles.pillPending}>{data?.payments.some((payment) => payment.payment_type === 'monthly' && payment.billing_month === month && payment.status === 'pending') ? 'Awaiting confirmation' : 'Pending'}</Text>
+            </View>
+          )) : <Text style={styles.muted}>{monthlyFee == null ? 'Monthly fee has not been set by the administrator.' : 'No monthly fees are pending.'}</Text>}
+          <Button title="Payments" onPress={() => setScreen('payments')} secondary />
           <View style={styles.buttonRow}>
             <Button title="Book a visit" onPress={() => { setScreen('book'); setNotice(''); setErrorMessage(''); }} />
             <Button title="My bookings" onPress={() => setScreen('bookings')} secondary />
           </View>
         </Card>
-        <Card>
-          <Text style={styles.sectionTitle}>Monthly payment</Text>
-          <Text style={styles.metricValue}>{currency(monthlyFee)}</Text>
-          <Text style={styles.muted}>Your monthly payment must be confirmed before booking. You can choose a vacant seat when you pay.</Text>
-          <Button title="Payments" onPress={() => setScreen('payments')} secondary />
-        </Card>
       </>
+    );
+  };
+
+  const renderAttendance = () => {
+    const availableMonths = Array.from({ length: 6 }, (_, index) => shiftMonth(currentMonth, -index));
+    const canCheckIn = indiaMinutes() >= 360 && indiaMinutes() < 1320;
+    return (
+      <Card>
+        <Text style={styles.sectionTitle}>Monthly attendance</Text>
+        <Text style={styles.muted}>Attendance is counted by days attended. Mark present for today’s confirmed visit before 10:00 PM India time.</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
+          {availableMonths.map((month) => (
+            <SelectChip key={month} title={formatMonth(month)} selected={attendanceMonth === month} onPress={() => setAttendanceMonth(month)} />
+          ))}
+        </ScrollView>
+        <View style={styles.metricGrid}>
+          <Card><Text style={styles.metricLabel}>Present days</Text><Text style={styles.metricValue}>{monthPresentDays}</Text></Card>
+          <Card><Text style={styles.metricLabel}>Absent days</Text><Text style={styles.metricValue}>{monthAbsentDays}</Text></Card>
+          <Card><Text style={styles.metricLabel}>Visits</Text><Text style={styles.metricValue}>{monthBookings.length}</Text></Card>
+        </View>
+        {monthBookings.map((booking) => {
+          const record = attendanceByBookingId.get(booking.id);
+          const canMark = booking.booking_date === indiaDate() && booking.status === 'confirmed'
+            && !record && data?.profile?.status === 'active' && canCheckIn;
+          return (
+            <View style={styles.record} key={booking.id}>
+              <View style={styles.recordTop}>
+                <Text style={styles.recordTitle}>{formatDate(booking.booking_date)}</Text>
+                <Pill label={record?.status ?? (booking.booking_date > indiaDate() ? 'upcoming' : 'awaiting')} status={record?.status ?? booking.status} />
+              </View>
+              <Text style={styles.muted}>Seat {booking.seat_number} · {data?.slots.find((slot) => slot.id === booking.slot_id)?.label ?? 'Library visit'}</Text>
+              {canMark ? <Button title={busy ? 'Saving…' : 'Mark present'} onPress={() => void markAttendance(booking.id)} disabled={busy} /> : null}
+            </View>
+          );
+        })}
+        {monthBookings.length === 0 ? <Text style={styles.empty}>No visits booked for this month.</Text> : null}
+        <Text style={styles.muted}>Unmarked confirmed visits are set absent after closing time.</Text>
+      </Card>
     );
   };
 
   const renderBookings = () => (
     <Card>
       <Text style={styles.sectionTitle}>Your bookings</Text>
-      <Text style={styles.muted}>Your seat is allocated from the confirmed payment for each month.</Text>
+      <Text style={styles.muted}>Your seat stays assigned while your account is active. Admin status changes release the seat and cancel future visits.</Text>
       <Button title="Book a visit" onPress={() => { setScreen('book'); setNotice(''); setErrorMessage(''); }} />
       {(data?.bookings ?? []).length === 0 ? <Text style={styles.empty}>No bookings yet.</Text> : null}
       {(data?.bookings ?? []).map((booking) => (
@@ -726,17 +860,44 @@ export default function App() {
       <Pressable onPress={() => setScreen('bookings')} accessibilityRole="button"><Text style={styles.backLink}>‹ My bookings</Text></Pressable>
       <Text style={styles.sectionTitle}>Book a visit</Text>
       <Text style={styles.muted}>The library is open daily from 6:00 AM to 10:00 PM.</Text>
-      {!canBook ? (
+      {!canBook && !(data?.profile?.status === 'active' && currentMonthPaid && allocatedSeat == null) ? (
         <View style={styles.noticeBox}>
           <Text style={styles.noticeBoxTitle}>Booking is not available yet</Text>
           <Text style={styles.muted}>
-            {!hasRegistrationPayment
-              ? 'Your registration fee must be confirmed first.'
-              : !monthlyFee
-                ? 'The library has not set your monthly fee yet.'
-                : 'Pay the monthly fee and wait for admin confirmation. Your seat will then be allocated.'}
+            {data?.profile?.status !== 'active'
+              ? 'Your membership is inactive. Contact the administrator to be reactivated.'
+              : !hasRegistrationPayment
+                ? 'Your registration fee must be confirmed first.'
+                : !monthlyFee
+                  ? 'The library has not set your monthly fee yet.'
+                  : !bookingMonthPaid
+                    ? 'The monthly fee for ' + formatMonth(firstOfMonth(bookingDate)) + ' must be confirmed.'
+                    : 'Choose a vacant seat before booking.'}
           </Text>
-          <Button title="Go to payments" onPress={() => setScreen('payments')} secondary />
+          {data?.profile?.status === 'active' && !bookingMonthPaid ? <Button title="Go to payments" onPress={() => setScreen('payments')} secondary /> : null}
+        </View>
+      ) : null}
+      {data?.profile?.status === 'active' && currentMonthPaid && allocatedSeat == null ? (
+        <View style={styles.noticeBox}>
+          <Text style={styles.noticeBoxTitle}>Choose a vacant seat to resume</Text>
+          <Text style={styles.muted}>Your fee for this month is verified. Choose an available seat; it will stay assigned while your account is active.</Text>
+          {loadingSeats ? <ActivityIndicator color="#235b48" /> : (
+            <View style={styles.seatGrid}>
+              {seats.map((seat) => {
+                const free = seat.status === 'available' && seat.is_available;
+                return (
+                  <Pressable key={seat.seat_number} accessibilityRole="button"
+                    accessibilityLabel={'Seat ' + seat.seat_number + (free ? ', available' : ', unavailable')}
+                    accessibilityState={{ selected: selectedSeat === seat.seat_number, disabled: !free }}
+                    disabled={!free || busy} onPress={() => setSelectedSeat(seat.seat_number)}
+                    style={[styles.seat, selectedSeat === seat.seat_number && styles.seatSelected, !free && styles.seatDisabled]}>
+                    <Text style={[styles.seatText, selectedSeat === seat.seat_number && styles.seatTextSelected, !free && styles.seatTextDisabled]}>{seat.seat_number}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          )}
+          <Button title={busy ? 'Saving…' : 'Assign selected seat'} onPress={() => selectedSeat != null && void assignSeat(selectedSeat)} disabled={busy || loadingSeats || selectedSeat == null} />
         </View>
       ) : null}
       <Text style={styles.label}>Visit date</Text>
@@ -762,7 +923,7 @@ export default function App() {
       </Pressable>
       {selectedSlot ? (
         <View style={styles.noticeBox}>
-          <Text style={styles.noticeBoxTitle}>Seat {allocatedSeat ?? 'not allocated'} for {formatMonth(firstOfMonth(bookingDate))}</Text>
+          <Text style={styles.noticeBoxTitle}>{allocatedSeat == null ? 'No seat assigned' : 'Seat ' + allocatedSeat + ' remains assigned while active'}</Text>
           <Text style={styles.muted}>
             Entry {formatTime(entryTime)} · Exit {exitMinutes > 1320 ? 'after closing' : formatTime(String(Math.floor(exitMinutes / 60)).padStart(2, '0') + ':' + String(exitMinutes % 60).padStart(2, '0'))}
           </Text>
@@ -780,7 +941,7 @@ export default function App() {
       <>
         <Card>
           <Text style={styles.sectionTitle}>Payments</Text>
-          <Text style={styles.muted}>Payments are confirmed by the library administrator. A selected monthly seat is held while payment is reviewed.</Text>
+          <Text style={styles.muted}>Payments are confirmed by the library administrator. Your assigned seat stays yours while your account is active.</Text>
           <View style={styles.chipRow}>
             <SelectChip title="Monthly fee" selected={paymentType === 'monthly'} onPress={() => { setPaymentType('monthly'); setSelectedSeat(null); setErrorMessage(''); }} />
             <SelectChip title="Registration fee" selected={paymentType === 'registration'} onPress={() => { setPaymentType('registration'); setErrorMessage(''); }} />
@@ -793,31 +954,38 @@ export default function App() {
                   <SelectChip key={month} title={formatMonth(month)} selected={billingMonth === month} onPress={() => chooseBillingMonth(month)} />
                 ))}
               </ScrollView>
-              <Text style={styles.sectionSubtitle}>Choose a vacant seat</Text>
-              {loadingSeats ? <ActivityIndicator color="#235b48" /> : (
-                <View style={styles.seatGrid}>
-                  {seats.map((seat) => {
-                    const free = seat.status === 'available' && seat.is_available;
-                    return (
-                      <Pressable
-                        key={seat.seat_number}
-                        accessibilityRole="button"
-                        accessibilityLabel={'Seat ' + seat.seat_number + (free ? ', available' : ', unavailable')}
-                        accessibilityState={{ selected: selectedSeat === seat.seat_number, disabled: !free }}
-                        disabled={!free}
-                        onPress={() => setSelectedSeat(seat.seat_number)}
-                        style={[styles.seat, selectedSeat === seat.seat_number && styles.seatSelected, !free && styles.seatDisabled]}
-                      >
-                        <Text style={[styles.seatText, selectedSeat === seat.seat_number && styles.seatTextSelected, !free && styles.seatTextDisabled]}>{seat.seat_number}</Text>
-                      </Pressable>
-                    );
-                  })}
+              {allocatedSeat != null ? (
+                <Text style={styles.muted}>Seat {allocatedSeat} stays assigned to you while your account is active. Monthly payments do not change your seat.</Text>
+              ) : data?.profile?.status !== 'active' ? (
+                <Text style={styles.muted}>Ask the administrator to reactivate your account before choosing a vacant seat or paying monthly fees.</Text>
+              ) : currentMonthPaid ? (
+                <View style={styles.noticeBox}>
+                  <Text style={styles.muted}>This month’s fee is verified. Choose a vacant seat in Book a visit to resume.</Text>
+                  <Button title="Choose a vacant seat" onPress={() => setScreen('book')} secondary />
                 </View>
+              ) : (
+                <>
+                  <Text style={styles.sectionSubtitle}>Choose a vacant seat</Text>
+                  {loadingSeats ? <ActivityIndicator color="#235b48" /> : (
+                    <View style={styles.seatGrid}>
+                      {seats.map((seat) => {
+                        const free = seat.status === 'available' && seat.is_available;
+                        return (
+                          <Pressable key={seat.seat_number} accessibilityRole="button"
+                            accessibilityLabel={'Seat ' + seat.seat_number + (free ? ', available' : ', unavailable')}
+                            accessibilityState={{ selected: selectedSeat === seat.seat_number, disabled: !free }}
+                            disabled={!free || busy} onPress={() => setSelectedSeat(seat.seat_number)}
+                            style={[styles.seat, selectedSeat === seat.seat_number && styles.seatSelected, !free && styles.seatDisabled]}>
+                            <Text style={[styles.seatText, selectedSeat === seat.seat_number && styles.seatTextSelected, !free && styles.seatTextDisabled]}>{seat.seat_number}</Text>
+                          </Pressable>
+                        );
+                      })}
+                    </View>
+                  )}
+                  <Text style={styles.muted}>After this monthly payment is confirmed, the selected seat stays assigned while your account is active.</Text>
+                  {selectedSeat != null ? <Text style={styles.selectedSeatText}>Selected seat: {selectedSeat}</Text> : null}
+                </>
               )}
-              <Text style={styles.muted}>
-                Available seats can be reserved for one student per month. Seat changes take effect with the next monthly payment.
-              </Text>
-              {selectedSeat != null ? <Text style={styles.selectedSeatText}>Seat {selectedSeat} will be held for {formatMonth(billingMonth)} while your payment is reviewed.</Text> : null}
             </>
           ) : (
             <Text style={styles.muted}>
@@ -864,11 +1032,12 @@ export default function App() {
               title={busy ? 'Submitting…' : 'Submit for verification'}
               onPress={() => void submitPayment()}
               disabled={busy || paymentAmount == null || paymentAmount <= 0 || paymentAlreadyCurrent
-                || (paymentType === 'monthly' && (loadingSeats || selectedSeat == null))}
+                || (paymentType === 'monthly' && (data?.profile?.status !== 'active'
+                  || (allocatedSeat == null && (loadingSeats || selectedSeat == null))))}
             />
           ) : null}
           {selectedPayment?.status === 'pending' ? <Text style={styles.muted}>Wait for the administrator to review this payment before submitting another.</Text> : null}
-          {selectedPayment?.status === 'verified' ? <Text style={styles.success}>Payment verified{paymentType === 'monthly' && selectedPayment.seat_number != null ? ' · seat ' + selectedPayment.seat_number + ' allocated' : ''}.</Text> : null}
+          {selectedPayment?.status === 'verified' ? <Text style={styles.success}>Payment verified{paymentType === 'monthly' && allocatedSeat != null ? ' · seat ' + allocatedSeat + ' remains assigned while active' : ''}.</Text> : null}
         </Card>
         <Card>
           <Text style={styles.sectionTitle}>Payment history</Text>
@@ -898,7 +1067,7 @@ export default function App() {
         <InfoRow label="Admission number" value={data?.registration?.admission_number ?? ''} />
         <InfoRow label="Email" value={user?.email ?? data?.profile?.email ?? ''} />
         <InfoRow label="Membership" value={data?.profile?.status ?? ''} />
-        <InfoRow label="Allocated seat this month" value={allocatedSeat == null ? 'No confirmed monthly seat' : 'Seat ' + allocatedSeat} />
+        <InfoRow label="Seat while active" value={allocatedSeat == null ? 'Choose a vacant seat after payment' : 'Seat ' + allocatedSeat} />
       </Card>
       <Card>
         <Text style={styles.sectionTitle}>Edit profile</Text>
@@ -950,7 +1119,8 @@ export default function App() {
     : screen === 'bookings' ? 'My bookings'
       : screen === 'payments' ? 'Payments'
         : screen === 'profile' ? 'Profile'
-          : 'Book a visit';
+          : screen === 'attendance' ? 'Attendance'
+            : 'Book a visit';
 
   return (
     <AppShell>
@@ -968,12 +1138,14 @@ export default function App() {
           : screen === 'bookings' ? renderBookings()
             : screen === 'payments' ? renderPayments()
               : screen === 'profile' ? renderProfile()
-                : renderBookingForm()}
+                : screen === 'attendance' ? renderAttendance()
+                  : renderBookingForm()}
       </ScrollView>
       {screen !== 'book' ? (
         <View style={styles.tabBar}>
           <Tab title="Home" selected={screen === 'home'} onPress={() => setScreen('home')} />
           <Tab title="Bookings" selected={screen === 'bookings'} onPress={() => setScreen('bookings')} />
+          <Tab title="Attendance" selected={screen === 'attendance'} onPress={() => setScreen('attendance')} />
           <Tab title="Payments" selected={screen === 'payments'} onPress={() => setScreen('payments')} />
           <Tab title="Profile" selected={screen === 'profile'} onPress={() => setScreen('profile')} />
         </View>

@@ -132,6 +132,7 @@ footer { max-width: 1155px; margin: auto; padding: 35px 0; display: flex; justif
 .student-nav a, .admin-nav a { display: inline-flex; align-items: center; padding: 10px 12px; border: 1px solid #ffffff22; color: #d3ded7; font-size: 10px; text-decoration: none; }
 .student-nav a.active, .admin-nav a.active { background: #d9a34b; border-color: #d9a34b; color: #183731; }
 .student-summary-grid, .admin-stat-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.student-summary-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 .student-summary-grid .student-card { display: grid; gap: 8px; min-height: 125px; align-content: start; }
 .student-summary-grid small, .admin-stat-grid small { color: #82918a; text-transform: uppercase; letter-spacing: 1px; font-size: 9px; }
 .student-summary-grid strong, .admin-stat-grid strong { color: var(--ink); font: normal 22px Georgia; text-transform: capitalize; }
@@ -312,4 +313,5 @@ footer { width: min(100%, 1155px); margin-inline: auto; padding-inline: var(--pa
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
 }
+
 
