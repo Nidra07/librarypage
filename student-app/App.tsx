@@ -626,7 +626,7 @@ export default function App() {
       setErrorMessage(error.message);
       return;
     }
-    setNotice('Booking cancelled. The seat is available again.');
+    setNotice('Visit cancelled; your assigned seat remains yours while your account is active.');
     await refresh();
   }
 
