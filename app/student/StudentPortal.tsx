@@ -193,7 +193,7 @@ export default function StudentPortal({ userId, section = 'dashboard' }: { userI
     : []
   const latestPaidMonth = verifiedMonthlyPayments.reduce((latest, payment) =>
     payment.billing_month && payment.billing_month > latest ? payment.billing_month : latest, currentMonth)
-  const nextFeeMonth = pendingFeeMonths[0] ?? monthsBetween(shiftMonth(currentMonth, 1), latestPaidMonth > currentMonth ? latestPaidMonth : shiftMonth(currentMonth, 1)).find((month) => !paidMonths.has(month))
+  const nextFeeMonth = monthlyFeeDue == null ? undefined : pendingFeeMonths[0] ?? monthsBetween(shiftMonth(currentMonth, 1), shiftMonth(latestPaidMonth, 1)).find((month) => !paidMonths.has(month))
   const daysToNextFee = nextFeeMonth ? (pendingFeeMonths.length ? 0 : daysUntil(nextFeeMonth)) : null
   const nextFeeIsOverdue = Boolean(pendingFeeMonths.length && (pendingFeeMonths[0] < currentMonth || localDate() > pendingFeeMonths[0]))
   const monthlyPresentDays = new Set(attendance.filter((record) => record.status === 'present' && record.attended_on.slice(0, 7) === currentMonth.slice(0, 7)).map((record) => record.attended_on)).size
