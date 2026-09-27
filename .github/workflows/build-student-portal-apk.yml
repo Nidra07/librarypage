@@ -70,15 +70,16 @@ jobs:
           path: student-app/dist/student-portal.apk
           retention-days: 30
 
-      - name: Publish the APK to the latest GitHub release
+      - name: Publish the APK as a versioned GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if gh release view student-portal >/dev/null 2>&1; then
-            gh release upload student-portal student-app/dist/student-portal.apk --clobber
+          release_tag="student-portal-v${GITHUB_RUN_NUMBER}"
+          if gh release view "$release_tag" >/dev/null 2>&1; then
+            gh release upload "$release_tag" student-app/dist/student-portal.apk --clobber
           else
-            gh release create student-portal student-app/dist/student-portal.apk \
-              --title "Peaceful Pages Student Portal" \
+            gh release create "$release_tag" student-app/dist/student-portal.apk \
+              --title "Peaceful Pages Student Portal ${release_tag}" \
               --notes "Install this Android APK to sign in to the student portal. Account creation and registration remain on the website." \
               --latest
           fi

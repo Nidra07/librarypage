@@ -99,6 +99,22 @@ function indiaDate(date = new Date()) {
 function firstOfMonth(date: string) {
   return date.slice(0, 7) + '-01';
 }
+function indiaRegistrationDate(value: string) {
+  const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date(value))
+  const fields = Object.fromEntries(parts.map((part) => [part.type, part.value]))
+  return fields.year + '-' + fields.month + '-' + fields.day
+}
+function billingCycleStart(registrationDate: string, billingMonth: string) {
+  const [year, month] = billingMonth.slice(0, 7).split('-').map(Number)
+  const day = Number(registrationDate.slice(8, 10))
+  const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate()
+  return year + '-' + String(month).padStart(2, '0') + '-' + String(Math.min(day, lastDay)).padStart(2, '0')
+}
+function billingMonthForDate(registrationDate: string | null, value: string) {
+  if (!registrationDate || value < registrationDate) return null
+  const candidateMonth = firstOfMonth(value)
+  return value < billingCycleStart(registrationDate, candidateMonth) ? shiftMonth(candidateMonth, -1) : candidateMonth
+}
 function shiftMonth(value: string, amount: number) {
   const date = new Date(value + 'T00:00:00Z');
   date.setUTCMonth(date.getUTCMonth() + amount);
@@ -335,6 +351,9 @@ export default function App() {
       return;
     }
     setData(result.data);
+    const registeredAt = result.data?.registration?.created_at;
+    const registeredDate = registeredAt ? indiaRegistrationDate(registeredAt) : null;
+    setBillingMonth(registeredDate ? (billingMonthForDate(registeredDate, indiaDate()) ?? firstOfMonth(indiaDate())) : firstOfMonth(indiaDate()));
   }, []);
 
   useEffect(() => {
@@ -408,7 +427,7 @@ export default function App() {
   useEffect(() => {
     const fee = data?.profile?.monthly_fee_override ?? data?.settings.monthly_fee ?? null;
     const paidThisMonth = Boolean(data?.payments.some((payment) => payment.payment_type === 'monthly'
-      && payment.billing_month === firstOfMonth(indiaDate()) && payment.status === 'verified'
+      && payment.billing_month === billingMonth && payment.status === 'verified'
       && fee != null && payment.amount >= fee));
     const chooseForPayment = screen === 'payments' && paymentType === 'monthly'
       && data?.profile?.status === 'active' && !data.seatAssignment;
@@ -422,7 +441,7 @@ export default function App() {
     let current = true;
     setLoadingSeats(true);
     setSelectedSeat(null);
-    const availabilityMonth = chooseAfterReactivation ? firstOfMonth(indiaDate()) : billingMonth;
+    const availabilityMonth = billingMonth;
     void supabase.rpc('get_monthly_seat_availability', { p_billing_month: availabilityMonth }).then(({ data: results, error }) => {
       if (!current) return;
       if (error) {
@@ -448,7 +467,7 @@ export default function App() {
     if (!data) return undefined;
     const matching = data.payments.filter((payment) =>
       payment.payment_type === paymentType
-      && (paymentType === 'registration' || payment.billing_month === billingMonth),
+      && (paymentType === 'registration' || payment.billing_month === (currentBillingMonth ?? billingMonth)),
     );
     return matching.find((payment) => payment.status === 'pending')
       ?? matching.find((payment) => payment.status === 'verified'
@@ -462,16 +481,19 @@ export default function App() {
     selectedPayment.status === 'pending'
     || (selectedPayment.status === 'verified' && paymentAmount != null && selectedPayment.amount >= paymentAmount)
   ));
+  const currentMonth = firstOfMonth(indiaDate());
+  const registrationDate = data?.registration?.created_at ? indiaRegistrationDate(data.registration.created_at) : null;
+  const currentBillingMonth = billingMonthForDate(registrationDate, indiaDate());
+  const bookingBillingMonth = billingMonthForDate(registrationDate, bookingDate);
   const bookingMonthPayment = data?.payments.find((payment) =>
     payment.payment_type === 'monthly'
-    && payment.billing_month === firstOfMonth(bookingDate)
+    && payment.billing_month === bookingBillingMonth
     && payment.status === 'verified'
     && monthlyFee != null
     && payment.amount >= monthlyFee,
   );
-  const currentMonth = firstOfMonth(indiaDate());
   const currentMonthPaid = Boolean(data?.payments.some((payment) => payment.payment_type === 'monthly'
-    && payment.billing_month === currentMonth && payment.status === 'verified'
+    && payment.billing_month === currentBillingMonth && payment.status === 'verified'
     && monthlyFee != null && payment.amount >= monthlyFee));
   const bookingMonthPaid = Boolean(bookingMonthPayment);
   const allocatedSeat = data?.seatAssignment?.seat_number ?? null;
@@ -487,6 +509,9 @@ export default function App() {
   const exitMinutes = selectedSlot ? minutes(entryTime) + selectedSlot.duration_hours * 60 : 0;
   const validBookingTime = Boolean(selectedSlot && minutes(entryTime) >= 360 && exitMinutes <= 1320);
   const attendanceByBookingId = new Map((data?.attendance ?? []).map((record) => [record.booking_id, record]));
+  const todayBooking = (data?.bookings ?? []).find((booking) => booking.booking_date === indiaDate() && booking.status === 'confirmed');
+  const todayAttendance = todayBooking ? attendanceByBookingId.get(todayBooking.id) : undefined;
+  const canCheckInNow = indiaMinutes() >= 360 && indiaMinutes() < 1320;
   const monthBookings = (data?.bookings ?? []).filter((booking) => booking.booking_date.slice(0, 7) === attendanceMonth && booking.status !== 'cancelled');
   const monthAttendance = (data?.attendance ?? []).filter((record) => record.attended_on.slice(0, 7) === attendanceMonth);
   const monthPresentDays = new Set(monthAttendance.filter((record) => record.status === 'present').map((record) => record.attended_on)).size;
@@ -494,18 +519,16 @@ export default function App() {
   const monthAbsentDays = new Set(monthAttendance.filter((record) => record.status === 'absent' && !presentDates.has(record.attended_on)).map((record) => record.attended_on)).size;
   const monthUnmarkedVisits = monthBookings.filter((booking) => !attendanceByBookingId.has(booking.id)).length;
   const currentPresentDays = new Set((data?.attendance ?? []).filter((record) => record.status === 'present' && record.attended_on.slice(0, 7) === currentMonth.slice(0, 7)).map((record) => record.attended_on)).size;
-  const registrationMonth = data?.registration?.created_at ? firstOfMonth(data.registration.created_at.slice(0, 10)) : currentMonth;
+  const registrationMonth = registrationDate ? firstOfMonth(registrationDate) : currentMonth;
   const verifiedMonthlyPayments = (data?.payments ?? []).filter((payment) => payment.payment_type === 'monthly'
     && payment.status === 'verified' && monthlyFee != null && payment.amount >= monthlyFee && payment.billing_month);
   const paidMonths = new Set(verifiedMonthlyPayments.map((payment) => payment.billing_month as string));
-  const pendingFeeMonths = data?.registration && monthlyFee != null && registrationMonth <= currentMonth
-    ? monthsBetween(registrationMonth, currentMonth).filter((month) => !paidMonths.has(month))
+  const pendingFeeMonths = data?.registration && currentBillingMonth && monthlyFee != null
+    ? monthsBetween(registrationMonth, currentBillingMonth).filter((month) => !paidMonths.has(month))
     : [];
-  const latestPaidMonth = verifiedMonthlyPayments.reduce((latest, payment) =>
-    payment.billing_month && payment.billing_month > latest ? payment.billing_month : latest, currentMonth);
-  const nextFeeMonth = monthlyFee == null ? undefined : pendingFeeMonths[0] ?? monthsBetween(shiftMonth(currentMonth, 1), shiftMonth(latestPaidMonth, 1)).find((month) => !paidMonths.has(month));
-  const daysToNextFee = nextFeeMonth ? (pendingFeeMonths.length ? 0 : daysUntil(nextFeeMonth)) : null;
-  const nextFeeIsOverdue = Boolean(pendingFeeMonths.length && (pendingFeeMonths[0] < currentMonth || indiaDate() > pendingFeeMonths[0]));
+  const nextFeeMonth = monthlyFee == null || !registrationDate ? undefined : pendingFeeMonths[0] ?? shiftMonth(currentBillingMonth ?? currentMonth, 1);
+  const daysToNextFee = nextFeeMonth ? (pendingFeeMonths.length ? 0 : daysUntil(billingCycleStart(registrationDate as string, nextFeeMonth))) : null;
+  const nextFeeIsOverdue = Boolean(pendingFeeMonths.length && registrationDate && billingCycleStart(registrationDate, pendingFeeMonths[0]) < indiaDate());
 
   async function refresh() {
     if (user) await loadAccount(user.id);
@@ -654,7 +677,7 @@ export default function App() {
     setNotice('');
     const { error } = await supabase.rpc('submit_payment', {
       p_payment_type: paymentType,
-      p_billing_month: paymentType === 'monthly' ? billingMonth : null,
+      p_billing_month: paymentType === 'monthly' ? (currentBillingMonth ?? billingMonth) : null,
       p_method: paymentMethod,
       p_transaction_reference: paymentMethod === 'phonepe' ? paymentReference.trim() : null,
       p_seat_number: paymentType === 'monthly' ? monthlyPaymentSeat : null,
@@ -694,7 +717,7 @@ export default function App() {
 
   async function openUpiPayment() {
     if (!data?.settings.phonepe_upi_id || paymentAmount == null) return;
-    const note = paymentType === 'registration' ? 'Library registration fee' : 'Library fee ' + billingMonth.slice(0, 7);
+    const note = paymentType === 'registration' ? 'Library registration fee' : 'Library fee ' + (currentBillingMonth ?? billingMonth).slice(0, 7);
     const link = 'upi://pay?pa=' + encodeURIComponent(data.settings.phonepe_upi_id)
       + '&pn=' + encodeURIComponent('The Peaceful Pages')
       + '&am=' + encodeURIComponent(String(paymentAmount))
@@ -772,9 +795,19 @@ export default function App() {
           <Card><Text style={styles.metricLabel}>Attendance this month</Text><Text style={styles.metricValue}>{currentPresentDays} days</Text><Text style={styles.muted}>Days attended</Text></Card>
         </View>
         <Card>
+          <Text style={styles.sectionTitle}>Mark present</Text>
+          {todayBooking ? todayAttendance?.status === 'present' ? <Text style={styles.noticeBoxTitle}>Your visit is marked present.</Text> : <>
+            <Text style={styles.muted}>{canCheckInNow ? 'Check in for today’s confirmed visit.' : 'Check-in is available from 6:00 AM to 10:00 PM India time.'}</Text>
+            <Button title="Mark present" onPress={() => void markAttendance(todayBooking.id)} disabled={!canCheckInNow || busy || data?.profile?.status !== 'active'} />
+          </> : <>
+            <Text style={styles.muted}>Book a visit for today to check in.</Text>
+            <Button title="Book a visit" onPress={() => { setScreen('book'); setNotice(''); setErrorMessage(''); }} secondary />
+          </>}
+        </Card>
+        <Card>
           <Text style={styles.sectionTitle}>Monthly fees</Text>
           <Text style={styles.metricValue}>{currency(monthlyFee)}</Text>
-          <Text style={styles.muted}>Next fee: {feeDueText}{nextFeeMonth ? ' · ' + formatMonth(nextFeeMonth) : ''}</Text>
+          <Text style={styles.muted}>Next fee: {feeDueText}{nextFeeMonth && registrationDate ? ' · due ' + formatDate(billingCycleStart(registrationDate, nextFeeMonth)) : ''}</Text>
           <Text style={styles.muted}>{allocatedSeat == null ? 'No seat assigned. Choose a vacant seat after your current monthly fee is verified.' : 'Seat ' + allocatedSeat + ' stays assigned while your account is active.'}</Text>
           <Text style={styles.sectionSubtitle}>Pending months</Text>
           {pendingFeeMonths.length ? pendingFeeMonths.map((month) => (
@@ -949,11 +982,7 @@ export default function App() {
           {paymentType === 'monthly' ? (
             <>
               <Text style={styles.label}>Billing month</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
-                {monthChoices().map((month) => (
-                  <SelectChip key={month} title={formatMonth(month)} selected={billingMonth === month} onPress={() => chooseBillingMonth(month)} />
-                ))}
-              </ScrollView>
+              <Text style={styles.muted}>Registration cycle: {registrationDate && currentBillingMonth ? formatDate(billingCycleStart(registrationDate, currentBillingMonth)) : 'complete registration first'}</Text>
               {allocatedSeat != null ? (
                 <Text style={styles.muted}>Seat {allocatedSeat} stays assigned to you while your account is active. Monthly payments do not change your seat.</Text>
               ) : data?.profile?.status !== 'active' ? (
