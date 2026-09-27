@@ -3,8 +3,8 @@ import type { Metadata, Viewport } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'The Peaaceful Pages Library',
-  description: 'Created by ASHISH',
+  title: 'The Peaceful Pages Library',
+  description: 'The Peaceful Library Management System',
   generator: 'ashish',
   icons: {
     icon: [
