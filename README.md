@@ -48,3 +48,27 @@ server-side Supabase Admin API workflow; never put a service-role key in the
 browser. After signing up and confirming their email, students complete the
 one-time registration before they can access the student portal. Active,
 registered students can book visits and check in on the visit date.
+
+## Email confirmation setup
+
+In Supabase, set the Auth **Site URL** to the live website's primary HTTPS domain.
+In **Authentication → Email Templates → Confirm signup**, use a link that opens
+the app's confirmation page without consuming the one-time token on the initial
+GET request:
+
+```html
+<h2>Confirm your email address</h2>
+<p>Tap the button below to confirm your email and finish signing up.</p>
+<p><a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&amp;type=email">Confirm email</a></p>
+```
+
+The student then presses **Confirm email** on the website. The form submits the
+token for verification and sends the student to registration. Set the Supabase
+Auth **Site URL** to the site's primary HTTPS domain and add its callback URL to
+the Auth redirect allow list. Production signup links use the same hostname
+where the student opened the form; the development-only redirect variable is
+ignored in production.
+
+For reliable delivery to students, configure a custom SMTP provider in Supabase
+Auth settings. The built-in email sender has low rate limits; avoid repeated
+signup attempts and use the in-app resend action after waiting for its timer.

@@ -4,7 +4,11 @@ import { createClient } from '@/lib/supabase/server'
 export async function GET(request: Request) {
   const url = new URL(request.url)
   const code = url.searchParams.get('code')
-  if (!code) return NextResponse.redirect(new URL('/auth/login', url.origin))
+  if (!code) {
+    const hasConfirmationError = url.searchParams.has('error') || url.searchParams.has('error_code')
+    const destination = hasConfirmationError ? '/auth/login?error=confirmation' : '/auth/login'
+    return NextResponse.redirect(new URL(destination, url.origin))
+  }
 
   const supabase = await createClient()
   const { error } = await supabase.auth.exchangeCodeForSession(code)

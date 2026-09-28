@@ -20,4 +20,4 @@
 @media (orientation: landscape) and (max-height: 500px) {
   .auth-page { align-items: flex-start; }
 }
-
+.auth-resend{display:block;width:100%;margin:14px 0 0;padding:12px;border:1px solid #cdd8d1;background:transparent;color:#17352f;font:700 13px Arial,sans-serif;cursor:pointer}.auth-resend:disabled{opacity:.6;cursor:wait}
