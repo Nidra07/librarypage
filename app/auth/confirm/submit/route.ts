@@ -22,4 +22,3 @@ export async function POST(request: Request) {
   const destination = user?.app_metadata?.role === 'admin' ? '/admin' : '/student/register'
   return NextResponse.redirect(new URL(destination, request.url), 303)
 }
-

@@ -22,7 +22,7 @@ export default async function ConfirmPage({ searchParams }: ConfirmPageProps) {
             : 'This confirmation link is missing or no longer valid. Sign in and request a fresh confirmation email.'}
         </p>
         {canConfirm ? (
-          <form method="post" action="/auth/confirm">
+          <form method="post" action="/auth/confirm/submit">
             <input type="hidden" name="token_hash" value={tokenHash} />
             <input type="hidden" name="type" value="email" />
             <button className="primary-button auth-submit" type="submit">Confirm email</button>
